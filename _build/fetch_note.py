@@ -12,6 +12,32 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
+# ---- 可选 Cookie 兜底 ----------------------------------------------------
+# 云端机房 IP 抓小红书时，可能被风控/登录墙拦下（HTTP 4xx 或返回验证页）。
+# 此时在平台后台加一个环境变量 XHS_COOKIE 即可（值＝浏览器登录
+# xiaohongshu.com 后请求头里的完整 Cookie），无需改代码。
+_COOKIE = ""
+
+
+def set_cookie(raw):
+    """运行时注入 Cookie（供服务端在拿到用户 Cookie 时调用）"""
+    global _COOKIE
+    _COOKIE = (raw or "").strip()
+
+
+def current_cookie():
+    return _COOKIE or os.environ.get("XHS_COOKIE", "").strip()
+
+
+def _risk_hint():
+    if current_cookie():
+        return ("已携带 Cookie 仍被拦：Cookie 可能已过期，请重新登录后复制一次；"
+                "或隔几分钟重试（风控是间歇性的）。")
+    return ("通常是服务所在机房的 IP 被小红书风控了。"
+            "可在部署平台的环境变量里增加 XHS_COOKIE"
+            "（浏览器登录 xiaohongshu.com 后，把请求头里的整段 Cookie 复制过来），"
+            "保存后重试即可，不用改代码。")
+
 
 class ScrapeError(Exception):
     """抓取失败（消息可直接展示给用户）。
@@ -37,8 +63,25 @@ def get(url, referer=None, timeout=30):
     }
     if referer:
         hdr["Referer"] = referer
+    ck = current_cookie()
+    if ck:
+        hdr["Cookie"] = ck
     req = urllib.request.Request(url, headers=hdr)
-    r = OPENER.open(req, timeout=timeout)
+    try:
+        r = OPENER.open(req, timeout=timeout)
+    except urllib.error.HTTPError as e:
+        # 4xx 里除 404 外基本都是风控/登录墙，转成可展示的错误 + 可执行建议
+        if e.code == 404:
+            raise NotFoundError("小红书返回 404（笔记不存在或链接不完整）",
+                                "确认链接是否被截断；若笔记已删除，换一条公开笔记。")
+        if e.code in (401, 403, 406, 418, 421, 422, 429, 461, 471):
+            raise ScrapeError("小红书拦截了这次请求（HTTP %d，风控/登录墙）" % e.code,
+                              _risk_hint())
+        raise ScrapeError("小红书返回了异常状态（HTTP %d）" % e.code,
+                          "稍后重试；若持续出现，把链接发我排查。")
+    except urllib.error.URLError as e:
+        raise ScrapeError("连不上小红书：%s" % (e.reason,),
+                          "检查当前网络/机房出站能否访问 xiaohongshu.com。")
     raw = r.read()
     if r.headers.get("Content-Encoding") == "gzip":
         raw = gzip.decompress(raw)
@@ -67,8 +110,8 @@ def parse_state(html):
     if i < 0:
         raise ScrapeError(
             "没有拿到笔记数据（小红书返回了验证页/登录页）",
-            "通常是该链接的访问凭证已失效，或这条笔记不是公开状态；"
-            "请在 App 里重新「分享 → 复制链接」，用新链接再试一次。")
+            "先在 App 里重新「分享 → 复制链接」，用新链接再试一次；"
+            "若换链接仍不行，" + _risk_hint())
     s = html[i + len("__INITIAL_STATE__="):]
     s = s[: s.find("</script>")]
     # XHS 会塞 undefined，替换成 null
