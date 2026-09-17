@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Top Post Sharing · 每周海报生成器</title>
+<style>
+:root{
+  --red:#e8354f; --red-d:#c92440; --ink:#1f2329; --ink2:#5a6270; --ink3:#8b93a1;
+  --line:#e6e9ef; --bg:#f4f6fa; --panel:#ffffff; --radius:12px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--ink);font-size:13px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:13px;color:inherit}
+
+/* ---------- 顶部栏 ---------- */
+.topbar{height:52px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;
+  justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(232,53,79,.12)}
+.topbar .hint{color:var(--ink3);font-size:12px}
+.acts{display:flex;gap:8px;align-items:center}
+
+/* ---------- 布局 ---------- */
+.wrap{display:flex;height:calc(100vh - 52px);align-items:stretch}
+.panel{width:392px;flex:0 0 392px;background:var(--panel);border-right:1px solid var(--line);
+  overflow-y:auto;padding:14px 16px 60px}
+.stage{flex:1;overflow:auto;background:
+  linear-gradient(45deg,#eceff4 25%,transparent 25%,transparent 75%,#eceff4 75%),
+  linear-gradient(45deg,#eceff4 25%,#f7f9fc 25%,#f7f9fc 75%,#eceff4 75%);
+  background-size:22px 22px;background-position:0 0,11px 11px;padding:22px 26px 60px}
+.stage-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stage-head .t{font-weight:600;color:var(--ink2);font-size:12px;letter-spacing:.3px}
+.scaler{transform-origin:top left}
+
+/* ---------- 表单控件 ---------- */
+fieldset{border:0;margin:0 0 6px;padding:14px 0 4px;border-top:1px dashed var(--line)}
+fieldset:first-of-type{border-top:0;padding-top:4px}
+legend,.glab{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.glab .n{width:16px;height:16px;border-radius:50%;background:#fdeaee;color:var(--red);font-size:10px;
+  display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.lab{display:block;font-size:12px;color:var(--ink2);margin:9px 0 5px}
+input[type=text],input[type=number],textarea,select{width:100%;border:1px solid var(--line);background:#fbfcfe;
+  border-radius:8px;padding:7px 9px;outline:none;transition:.15s}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--red);background:#fff;box-shadow:0 0 0 3px rgba(232,53,79,.08)}
+textarea{resize:vertical;line-height:1.5;min-height:40px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{min-width:0}
+.mrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.mrow>*{min-width:0}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;
+  font-weight:500;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:#cdd4e0;background:#fafbfe}
+.btn.pri{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 2px 8px rgba(232,53,79,.25)}
+.btn.pri:hover{background:var(--red-d);border-color:var(--red-d)}
+.btn.ghost{background:#fbfcfe}
+.btn.sm{padding:5px 9px;font-size:12px}
+.btn-xs{border:1px solid var(--line);background:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;
+  line-height:1;display:inline-flex;align-items:center;justify-content:center;color:var(--ink2)}
+.btn-xs:hover{background:#f4f6fa;border-color:#cdd4e0}
+.btn-xs.del:hover{color:#fff;background:var(--red);border-color:var(--red)}
+.sw{display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;color:var(--ink2);font-size:12px}
+.sw input{display:none}
+.sw i{width:34px;height:19px;border-radius:19px;background:#d8dde6;position:relative;transition:.2s;flex:0 0 auto}
+.sw i:after{content:"";position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.2s}
+.sw input:checked + i{background:var(--red)}
+.sw input:checked + i:after{left:17px}
+.thumb{border:1px dashed #ccd3e0;border-radius:10px;background:#fbfcfe;padding:8px;display:flex;gap:9px;align-items:center}
+.thumb .pv{width:44px;height:44px;border-radius:8px;background:#eef1f6 center/cover no-repeat;flex:0 0 auto;border:1px solid var(--line)}
+.thumb .pv.round{border-radius:50%}
+.thumb .pv.tall{width:31px;height:56px}
+.thumb .txt{font-size:11px;color:var(--ink3);line-height:1.5}
+.thumb.hover{border-color:var(--red);background:#fff7f8}
+.media-row{display:flex;gap:7px;flex-wrap:wrap}
+.media-row .btn{flex:1}
+
+/* 卡片行编辑器 */
+.rlist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.ritem{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fbfcfe}
+.ritem .rt{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.ritem .rt input{flex:1;font-weight:600;font-size:12px;padding:5px 8px}
+.ritem .rf{display:flex;gap:6px;align-items:flex-start}
+.ritem .rf textarea{flex:1;font-size:12px;min-height:38px}
+.rtools{display:flex;flex-direction:column;gap:3px}
+.tips{font-size:11px;color:var(--ink3);line-height:1.6;background:#f7f9fc;border-radius:8px;padding:8px 10px;margin-top:9px}
+.tips b{color:var(--red)}
+kbd{background:#fff;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:10px}
+
+/* ---------- 海报（1px = 1 设计像素） ---------- */
+.poster{position:relative;width:540px;overflow:hidden;color:#fff;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  background:linear-gradient(180deg,#FC425A 0%,#FF5B73 20%,#FD8493 40%,#FFB6BF 60%,#FFDAE1 80%,#FEFAF7 100%)}
+.poster .deco{position:absolute;inset:0;pointer-events:none}
+.poster .orb{position:absolute;border-radius:50%}
+.poster .top{position:relative;height:577px;overflow:hidden}
+.p-title{position:absolute;left:0;right:0;top:34px;text-align:center;font-size:23px;font-weight:800;
+  letter-spacing:.5px;color:#fff;text-shadow:0 1px 6px rgba(190,20,45,.18)}
+.p-avatar{position:absolute;left:65px;top:97px;width:135px;height:135px;border-radius:50%;
+  display:block;background:#ffd7de;box-shadow:0 6px 18px rgba(160,20,45,.16)}
+.p-name{position:absolute;left:0;top:237px;width:265px;text-align:center;font-size:19.5px;line-height:26px;
+  font-weight:600;color:#fff;text-shadow:0 1px 5px rgba(190,20,45,.15)}
+.p-metrics{position:absolute;left:39px;top:313px;width:210px}
+.m-row{position:relative;height:68px}
+.m-ico{position:absolute;left:0;top:9px;width:28px;text-align:center;line-height:0}
+.m-num{position:absolute;left:47px;top:3px;font-size:29px;line-height:29px;font-weight:400;color:#fff;
+  font-variant-numeric:tabular-nums}
+.emoji-ico{font-size:24px;line-height:28px}
+.p-phone{position:absolute;left:258px;top:97px;width:236px;height:513px}
+.ph-rim{height:100%;border-radius:36px;padding:2px;
+  background:linear-gradient(160deg,#f2f4f8 0%,#b9bfca 35%,#8d94a1 55%,#e7eaf0 100%)}
+.ph-body{height:100%;border-radius:34px;background:#0b0b0d;padding:5px;
+  box-shadow:0 18px 38px rgba(150,10,40,.30)}
+.ph-screen{position:relative;height:100%;border-radius:29px;overflow:hidden;background:#fff}
+.ph-screen img{display:block;width:100%;height:100%}
+.ph-island{position:absolute;top:22px;left:50%;margin-left:-28px;width:56px;height:18px;background:#000;
+  border-radius:10px}
+.p-float{position:absolute;left:252px;top:220px;border-radius:12px;background:#fff;padding:4px;
+  box-shadow:0 12px 26px rgba(120,10,35,.28),0 0 0 1px rgba(30,20,40,.45)}
+.p-float img{display:block;width:100%;height:100%;border-radius:9px}
+/* min-height 522 → 卡片底边正好落在 1099，让每周海报总高恒定（内容多则自然长高） */
+.p-card{position:relative;margin:0 30px 0;background:#fff;border-radius:14px;padding:26px 18px 40px;
+  box-shadow:0 10px 26px rgba(160,20,45,.10);color:#3d3d3d;
+  display:flex;flex-direction:column;min-height:522px}
+/* 卡片内边距 18px；行盒不再向右溢出（原来 margin-right:-20px 会让正文贴到卡片边缘）。
+   布局规则（由 render() 落地，这里给的是未执行 JS 时的兜底值）：
+     · 所有标签块统一取「最长标签」的宽度并居中 → 红色标签列右边缘对齐、宽度一致；
+     · 行盒 padding-left = 标签宽 + 16 → 「标签→正文」间距恒为 16px，正文起点也统一。
+   这两条合起来保证左（标签列）右（正文列）两条竖线都对齐。 */
+.crow{position:relative;padding-left:104px;margin-bottom:14px}
+.crow:last-child{margin-bottom:0}
+.pill{position:absolute;left:0;top:0;background:#FB304E;color:#fff;font-size:13px;line-height:16px;
+  font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;letter-spacing:.2px;
+  text-align:center}
+.ctext{font-size:13.5px;line-height:22.25px;color:#3d3d3d;word-break:break-word}
+.ctext .hl{color:#FB304E;font-weight:700}
+/* 用 flex 居中：html2canvas 对 text-align:center 里的 inline-block 会画到裁剪区外，导出会丢二维码 */
+.qrbox{margin-top:auto;padding-top:16px;display:flex;flex-direction:column;align-items:center}
+.qrwrap{display:inline-block;border:1px solid #ececec;border-radius:10px;padding:6px;background:#fff;line-height:0}
+.qrwrap img{display:block;width:93px;height:93px}
+.qrcap{margin-top:6px;font-size:12px;color:#7a7a7a;letter-spacing:.2px}
+
+/* ---------- 提示 ---------- */
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:rgba(31,35,41,.92);color:#fff;
+  padding:9px 16px;border-radius:9px;font-size:12.5px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
+.toast.on{opacity:1;bottom:44px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="dot"></span>Top Post Sharing · 每周海报生成器</div>
+  <div class="acts">
+    <span class="hint">改文案 / 换图 → 一键导出 1080 宽 PNG</span>
+    <button class="btn sm" id="btn-reset">恢复示例</button>
+    <button class="btn sm" id="btn-imp">导入配置</button>
+    <button class="btn sm" id="btn-exp">导出配置</button>
+    <button class="btn sm pri" id="btn-png2">下载 PNG (2x)</button>
+    <button class="btn sm" id="btn-png3">3x</button>
+    <button class="btn sm" id="btn-copy">复制图片</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- ============ 左侧：编辑区 ============ -->
+  <aside class="panel">
+    <div class="tips" style="margin:0 0 12px">
+      <b>每周三步走</b>：① 换头像 / 手机截图（点框上传，或直接 <kbd>⌘V</kbd> 粘贴）② 改账号名与三个数字 ③ 改下方卡片文案 → 「下载 PNG」<br>
+      版式固定不用动；下次打开自动恢复上次内容（也可「导出配置」存档，下周「导入配置」继续改）。
+    </div>
+
+    <fieldset>
+      <div class="glab"><span class="n">1</span>标题</div>
+      <input type="text" id="f-title" placeholder="Top Post Sharing">
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">2</span>账号信息</div>
+      <div class="thumb" id="up-avatar" data-target="avatar">
+        <div class="pv round" id="pv-avatar"></div>
+        <div class="txt">头像（方形/圆形截图均可，自动裁圆）<br>点击选择 · 拖入 · 或 ⌘V 粘贴</div>
+      </div>
+      <label class="lab">账号名（换行即海报换行，建议 ≤2 行）</label>
+      <textarea id="f-name" rows="2" placeholder="@账号名"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">3</span>三个数据</div>
+      <div class="mrow">
+        <select id="f-m0k" style="width:106px"></select><input type="text" id="f-m0v" style="flex:1">
+      </div>
+      <div class="mrow">
+        <select id="f-m1k" style="width:106px"></select><input type="text" id="f-m1v" style="flex:1">
+      </div>
+      <div class="mrow">
+        <select id="f-m2k" style="width:106px"></select><input type="text" id="f-m2v" style="flex:1">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="f-mcustom" placeholder="自定义图标（选“自定义”时生效，可填 emoji，如 🔥）">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">4</span>手机截图</div>
+      <div class="thumb" id="up-shot" data-target="shot">
+        <div class="pv tall" id="pv-shot"></div>
+        <div class="txt">手机截屏原图（自动顶部对齐裁切，底部被卡片遮住不影响）<br>点击选择 · 拖入 · 或 ⌘V 粘贴</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">5</span>悬浮小图（第 2 张图）</div>
+      <label class="sw" style="margin-bottom:8px"><input type="checkbox" id="f-floatShow"><i></i>显示悬浮小图</label>
+      <div class="thumb" id="up-float" data-target="float">
+        <div class="pv" id="pv-float"></div>
+        <div class="txt">叠在手机上的第二个画面（通常取笔记第 2 张图，已自动填入）<br>不满意就点这里换一张 · 拖入 · 或 ⌘V 粘贴</div>
+      </div>
+      <label class="lab">宽度：<span id="f-floatWv">185</span> px</label>
+      <input type="range" id="f-floatW" min="120" max="300" step="5" style="width:100%">
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">6</span>卡片内容</div>
+      <div class="tips" style="margin-top:0">用 <b>**两个星号**</b> 包住要标红加粗的字，例如：<b>**热门断货墨镜**</b>，直观呈现 → 只有星号内的字变红。回车即换行。</div>
+      <div class="rlist" id="rlist"></div>
+      <button class="btn ghost sm" id="btn-addrow" style="margin-top:9px;width:100%">＋ 添加一行</button>
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">7</span>二维码</div>
+      <div class="row" style="margin-bottom:8px">
+        <select id="f-qrMode" style="width:130px">
+          <option value="text">用文字自动生成</option>
+          <option value="img">上传二维码图片</option>
+        </select>
+        <button class="btn sm ghost" id="up-qr" style="flex:1">选择二维码图片</button>
+      </div>
+      <input type="text" id="f-qrText" placeholder="链接或文字（自动生成二维码）">
+      <label class="lab">二维码下方说明</label>
+      <input type="text" id="f-qrCaption" placeholder="扫码查看全文">
+    </fieldset>
+
+    <fieldset>
+      <div class="glab"><span class="n">8</span>背景装饰光斑</div>
+      <label class="sw"><input type="checkbox" id="f-orbs"><i></i>显示柔光斑</label>
+    </fieldset>
+
+    <fieldset>
+      <div class="glab">排版微调（一般不用动）</div>
+      <label class="lab">导出倍率：<span id="f-scaleV">2</span>x（1080 宽）</label>
+      <input type="range" id="f-scale" min="1" max="3" step="1" style="width:100%">
+      <label class="lab">整卡字号：<span id="f-fsV">13.5</span> px</label>
+      <input type="range" id="f-fs" min="11" max="18" step="0.5" style="width:100%">
+      <label class="lab">整卡行距：<span id="f-lhV">22.25</span> px</label>
+      <input type="range" id="f-lh" min="18" max="30" step="0.25" style="width:100%">
+    </fieldset>
+  </aside>
+
+  <!-- ============ 右侧：预览 ============ -->
+  <section class="stage" id="stage">
+    <div class="stage-head">
+      <div class="t">预览 · 实际导出尺寸 <span id="outSize">540 × 1100</span> px</div>
+      <div class="row" style="gap:8px">
+        <span class="t">缩放</span>
+        <input type="range" id="f-zoom" min="40" max="100" step="5" value="75" style="width:120px">
+        <span class="t" id="f-zoomV">75%</span>
+      </div>
+    </div>
+    <div class="scaler" id="scaler">
+      <div class="poster" id="poster">
+        <div class="deco" id="deco"></div>
+        <div class="top">
+          <div class="p-title" id="p-title">Top Post Sharing</div>
+          <img class="p-avatar" id="p-avatar" alt="">
+          <div class="p-name" id="p-name"></div>
+          <div class="p-metrics" id="p-metrics">
+            <div class="m-row"><div class="m-ico" id="p-ico0"></div><div class="m-num" id="p-num0"></div></div>
+            <div class="m-row"><div class="m-ico" id="p-ico1"></div><div class="m-num" id="p-num1"></div></div>
+            <div class="m-row"><div class="m-ico" id="p-ico2"></div><div class="m-num" id="p-num2"></div></div>
+          </div>
+          <div class="p-phone">
+            <div class="ph-rim"><div class="ph-body"><div class="ph-screen">
+              <img id="p-shot" alt=""><div class="ph-island"></div>
+            </div></div></div>
+          </div>
+          <div class="p-float hidden" id="p-float"><img id="p-floatimg" alt=""></div>
+        </div>
+        <div class="p-card" id="p-card">
+          <div id="p-rows"></div>
+          <div class="qrbox" id="p-qrbox">
+            <div class="qrwrap"><img id="p-qr" alt=""></div>
+            <div class="qrcap" id="p-qrcap">扫码查看全文</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="filepick" accept="image/*" class="hidden">
+
+<!--LIBS-->
+<script>/*__QR_LIB__*/</script>
+<script>/*__H2C_LIB__*/</script>
+<script>
+/* ================= 状态 ================= */
+const DEMO = __DEMO_JSON__;
+const IMG  = { avatar:"__AVATAR__", shot:"__SHOT__", float:"__FLOAT__" };
+const LS = 'tps_poster_v1';
+const ICONS = {
+  like:'<svg width="27" height="25" viewBox="0 0 27 25" fill="none"><path d="M13.5 22.9S2.3 16.1 2.3 8.7C2.3 5.3 4.8 2.6 8 2.6c2 0 3.9 1.1 4.9 2.9l.6 1.2.6-1.2c1-1.8 2.9-2.9 4.9-2.9 3.2 0 5.7 2.7 5.7 6.1 0 7.4-11.2 14.2-11.2 14.2z" stroke="#C00000" stroke-width="2.3" stroke-linejoin="round"/></svg>',
+  star:'<svg width="28" height="27" viewBox="0 0 28 27" fill="none"><path d="M14 2.7l3.3 6.8 7.5 1-5.4 5.3 1.3 7.5L14 19.7l-6.7 3.6 1.3-7.5L3.2 10.5l7.5-1L14 2.7z" stroke="#C00000" stroke-width="2.3" stroke-linejoin="round"/></svg>',
+  comment:'<svg width="26" height="25" viewBox="0 0 26 25" fill="none"><path d="M13 2.2C6.9 2.2 2 6.3 2 11.4c0 2.9 1.6 5.5 4.1 7.2v4.3l4.3-2.4c.8.2 1.7.3 2.6.3 6.1 0 11-4.1 11-9.4S19.1 2.2 13 2.2z" fill="#C00000"/><circle cx="8.3" cy="11.6" r="1.45" fill="#fff"/><circle cx="13" cy="11.6" r="1.45" fill="#fff"/><circle cx="17.7" cy="11.6" r="1.45" fill="#fff"/></svg>',
+  share:'<svg width="25" height="25" viewBox="0 0 25 25" fill="none"><path d="M12.5 15.4V2.9m0 0L7.6 7.8m4.9-4.9l4.9 4.9" stroke="#C00000" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.1 12.3v6.6c0 1.5 1.2 2.7 2.7 2.7h11.4c1.5 0 2.7-1.2 2.7-2.7v-6.6" stroke="#C00000" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+const ICON_OPTS = [['like','♡ 赞'],['star','☆ 收藏'],['comment','💬 评论'],['share','↗ 分享'],['emoji','自定义']];
+
+let S = null;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fresh(){
+  const s = JSON.parse(JSON.stringify(DEMO));
+  s.avatarRaw = IMG.avatar; s.avatar = IMG.avatar;
+  s.shotRaw = IMG.shot;     s.shot = IMG.shot;
+  s.floatRaw = IMG.float;   s.floatImg = IMG.float;
+  s.qrImg = '';
+  s.fontSize = 13.5; s.lineH = 22.25; s.exportScale = 2;
+  return s;
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(LS);
+    if(raw){ const o = JSON.parse(raw); if(o && o.rows) return Object.assign(fresh(), o); }
+  }catch(e){}
+  return fresh();
+}
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
+
+/* ================= 渲染海报 ================= */
+function fmt(t){
+  return esc(t).replace(/\*\*(.+?)\*\*/g,'<span class="hl">$1</span>').replace(/\n/g,'<br>');
+}
+function icoHtml(m){
+  if(m.k==='emoji') return '<span class="emoji-ico">'+esc(m.emoji||'🔥')+'</span>';
+  return ICONS[m.k] || ICONS.like;
+}
+function render(){
+  $('#p-title').textContent = S.title || '';
+  $('#p-avatar').src = S.avatar || '';
+  $('#p-name').innerHTML = esc(S.name||'').replace(/\n/g,'<br>');
+  [0,1,2].forEach(i=>{
+    const m = S.metrics[i] || {k:'like',v:''};
+    $('#p-ico'+i).innerHTML = icoHtml(m);
+    $('#p-num'+i).textContent = m.v;
+  });
+  $('#p-shot').src = S.shot || '';
+  // 悬浮小图
+  const fw = Math.round(S.floatW||185), fh = Math.round(fw*1.27);
+  const fx = $('#p-float');
+  if(S.floatShow && S.floatImg){
+    fx.classList.remove('hidden');
+    fx.style.width = fw+'px'; fx.style.height = (fh+8)+'px';
+    $('#p-floatimg').src = S.floatImg;
+  } else fx.classList.add('hidden');
+  // 卡片
+  $('#p-rows').innerHTML = S.rows.map(r =>
+    '<div class="crow"><span class="pill">'+esc(r.label)+'</span><div class="ctext">'+fmt(r.text)+'</div></div>'
+  ).join('');
+  $$('#p-rows .ctext').forEach(el=>{ el.style.fontSize = S.fontSize+'px'; el.style.lineHeight = S.lineH+'px'; });
+  // 标签列：所有标签块统一取「最长标签」的宽度（文案居中），
+  // 行盒 padding-left = 标签宽 + 16 → 红色标签列等宽对齐、「标签→正文」间距恒为 16px。
+  // 注意用 offsetWidth（布局像素）而不是 getBoundingClientRect（会被预览缩放的 transform 影响）。
+  const pills = $$('#p-rows .pill');
+  if(pills.length){
+    let pw = 0; pills.forEach(p=>{ if(p.offsetWidth > pw) pw = p.offsetWidth; });
+    pills.forEach(p=>{ p.style.width = pw + 'px'; });
+    $$('#p-rows .crow').forEach(c=>{ c.style.paddingLeft = (pw + 16) + 'px'; });
+  }
+  // 二维码
+  renderQR();
+  // 光斑
+  $('#deco').innerHTML = S.orbs ? `
+    <div class="orb" style="left:184px;top:344px;width:86px;height:86px;background:radial-gradient(circle,rgba(255,140,175,.62) 0%,rgba(255,150,182,.30) 45%,rgba(255,160,190,0) 72%)"></div>
+    <div class="orb" style="left:300px;top:44px;width:240px;height:240px;background:radial-gradient(circle,rgba(255,255,255,.30) 0%,rgba(255,255,255,.10) 50%,rgba(255,255,255,0) 72%)"></div>
+    <div class="orb" style="left:352px;top:150px;width:170px;height:170px;background:radial-gradient(circle,rgba(255,255,255,.42) 0%,rgba(255,255,255,.14) 48%,rgba(255,255,255,0) 74%)"></div>
+    <div class="orb" style="left:6px;top:470px;width:120px;height:120px;background:radial-gradient(circle,rgba(255,150,182,.34) 0%,rgba(255,150,182,.14) 45%,rgba(255,150,182,0) 72%)"></div>` : '';
+  // 尺寸提示
+  const h = $('#poster').offsetHeight;
+  $('#outSize').textContent = '540 × ' + h;
+}
+function renderQR(){
+  const img = $('#p-qr');
+  $('#p-qrcap').textContent = S.qrCaption || '';
+  $('#p-qrbox').classList.remove('hidden');
+  if(S.qrMode==='img' && S.qrImg){ img.src = S.qrImg; return; }
+  const txt = (S.qrText||'').trim();
+  if(!txt){ $('#p-qrbox').classList.add('hidden'); return; }
+  try{
+    img.src = qrPNG(txt);
+  }catch(e){ $('#p-qrbox').classList.add('hidden'); }
+}
+/* 自己用 canvas 画二维码并输出 PNG：比库自带的 GIF dataURL 兼容性更好，
+   同时避免 html2canvas 对 GIF 的渲染问题 */
+function qrPNG(txt, cell, margin){
+  cell = cell || 6; margin = (margin==null) ? 2 : margin;
+  const q = qrcode(0,'M'); q.addData(txt); q.make();
+  const n = q.getModuleCount(), size = n*cell + margin*2;
+  const cv = document.createElement('canvas');
+  cv.width = size; cv.height = size;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#ffffff'; cx.fillRect(0,0,size,size);
+  cx.fillStyle = '#000000';
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++)
+    if(q.isDark(r,c)) cx.fillRect(margin+c*cell, margin+r*cell, cell, cell);
+  return cv.toDataURL('image/png');
+}
+
+/* ================= 编辑面板 ================= */
+function fillSelect(sel){ sel.innerHTML = ICON_OPTS.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join(''); }
+function syncPanel(){
+  $('#f-title').value = S.title||'';
+  $('#f-name').value = S.name||'';
+  [0,1,2].forEach(i=>{
+    const m = S.metrics[i]||{k:'like',v:'',emoji:''};
+    $('#f-m'+i+'k').value = m.k; $('#f-m'+i+'v').value = m.v||'';
+  });
+  $('#f-mcustom').value = (S.metrics.find(m=>m.k==='emoji')||{}).emoji||'';
+  $('#f-floatShow').checked = !!S.floatShow;
+  $('#f-floatW').value = S.floatW||185; $('#f-floatWv').textContent = S.floatW||185;
+  $('#f-qrMode').value = S.qrMode||'text';
+  $('#f-qrText').value = S.qrText||'';
+  $('#f-qrCaption').value = S.qrCaption||'';
+  $('#f-orbs').checked = !!S.orbs;
+  $('#f-fs').value = S.fontSize||15; $('#f-fsV').textContent = S.fontSize||15;
+  $('#f-lh').value = S.lineH||22.25; $('#f-lhV').textContent = S.lineH||22.25;
+  $('#f-scale').value = S.exportScale||2; $('#f-scaleV').textContent = S.exportScale||2;
+  pv('#pv-avatar', S.avatar); pv('#pv-shot', S.shot); pv('#pv-float', S.floatImg);
+  buildRows();
+}
+function pv(sel, url){ const el=$(sel); el.style.backgroundImage = url? 'url('+url+')' : 'none'; }
+function buildRows(){
+  $('#rlist').innerHTML = S.rows.map((r,i)=>`
+    <div class="ritem" data-i="${i}">
+      <div class="rt"><input type="text" class="rl" value="${esc(r.label)}" placeholder="标签，如 封面优点:">
+        <div class="rtools">
+          <button class="btn-xs" data-act="up" title="上移">↑</button>
+          <button class="btn-xs" data-act="down" title="下移">↓</button>
+        </div>
+        <button class="btn-xs del" data-act="del" title="删除">✕</button>
+      </div>
+      <div class="rf"><textarea class="rtx" placeholder="正文。用 **两个星号** 标红加粗">${esc(r.text)}</textarea></div>
+    </div>`).join('');
+}
+
+/* ================= 事件 ================= */
+function bindText(id, fn){ $(id).addEventListener('input', e=>{ fn(e.target.value); save(); render(); }); }
+
+bindText('#f-title', v=>S.title=v);
+bindText('#f-name', v=>S.name=v);
+bindText('#f-qrText', v=>{ S.qrText=v; if(S.qrMode!=='img') S.qrMode='text'; });
+bindText('#f-qrCaption', v=>S.qrCaption=v);
+[0,1,2].forEach(i=>{
+  $('#f-m'+i+'k').addEventListener('change', e=>{ S.metrics[i].k=e.target.value; save(); render(); });
+  $('#f-m'+i+'v').addEventListener('input', e=>{ S.metrics[i].v=e.target.value; save(); render(); });
+});
+$('#f-mcustom').addEventListener('input', e=>{
+  const t=e.target.value;
+  S.metrics.forEach(m=>{ if(m.k==='emoji') m.emoji=t; });
+  if(!S.metrics.some(m=>m.k==='emoji')) S.customEmoji = t;
+  save(); render();
+});
+$('#f-floatShow').addEventListener('change', e=>{ S.floatShow=e.target.checked; save(); render(); });
+$('#f-floatW').addEventListener('input', async e=>{
+  S.floatW = +e.target.value; $('#f-floatWv').textContent = S.floatW;
+  if(S.floatRaw) S.floatImg = await fitImage(S.floatRaw, S.floatW, Math.round(S.floatW*1.27),'center');
+  save(); render();
+});
+$('#f-qrMode').addEventListener('change', e=>{ S.qrMode=e.target.value; save(); render(); });
+$('#f-orbs').addEventListener('change', e=>{ S.orbs=e.target.checked; save(); render(); });
+$('#f-fs').addEventListener('input', e=>{ S.fontSize=+e.target.value; $('#f-fsV').textContent=S.fontSize; save(); render(); });
+$('#f-lh').addEventListener('input', e=>{ S.lineH=+e.target.value; $('#f-lhV').textContent=S.lineH; save(); render(); });
+$('#f-scale').addEventListener('input', e=>{ S.exportScale=+e.target.value; $('#f-scaleV').textContent=S.exportScale; save(); });
+$('#f-zoom').addEventListener('input', e=>{ $('#f-zoomV').textContent = e.target.value+'%'; applyZoom(); });
+
+$('#rlist').addEventListener('input', e=>{
+  const item = e.target.closest('.ritem'); if(!item) return;
+  const i = +item.dataset.i;
+  if(e.target.classList.contains('rl')) S.rows[i].label = e.target.value;
+  if(e.target.classList.contains('rtx')) S.rows[i].text = e.target.value;
+  save(); render();
+});
+$('#rlist').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  const i = +e.target.closest('.ritem').dataset.i;
+  const act = b.dataset.act;
+  if(act==='del') S.rows.splice(i,1);
+  if(act==='up' && i>0){ const t=S.rows[i-1]; S.rows[i-1]=S.rows[i]; S.rows[i]=t; }
+  if(act==='down' && i<S.rows.length-1){ const t=S.rows[i+1]; S.rows[i+1]=S.rows[i]; S.rows[i]=t; }
+  save(); render(); buildRows();
+});
+$('#btn-addrow').addEventListener('click', ()=>{ S.rows.push({label:'新标签:',text:''}); save(); render(); buildRows(); });
+
+/* -------- 图片上传 -------- */
+let lastTarget = 'shot';
+function readFile(file){
+  return new Promise(res=>{ const fr = new FileReader(); fr.onload = ()=>res(fr.result); fr.readAsDataURL(file); });
+}
+function fitImage(src, tw, th, anchor){
+  return new Promise(res=>{
+    const im = new Image();
+    im.onload = ()=>{
+      const k = 3, cw = Math.round(tw*k), ch = Math.round(th*k);
+      const c = document.createElement('canvas'); c.width=cw; c.height=ch;
+      const g = c.getContext('2d');
+      const r = Math.max(cw/im.width, ch/im.height);
+      const w = im.width*r, h = im.height*r;
+      g.drawImage(im, (cw-w)/2, anchor==='top'?0:(ch-h)/2, w, h);
+      res(c.toDataURL('image/jpeg', .92));
+    };
+    im.onerror = ()=>res(src);
+    im.src = src;
+  });
+}
+async function applyImage(raw, target){
+  if(target==='avatar'){ S.avatarRaw = raw; S.avatar = await fitImage(raw,135,135,'center'); }
+  else if(target==='shot'){ S.shotRaw = raw; S.shot = await fitImage(raw,226,503,'top'); }
+  else if(target==='float'){ S.floatRaw = raw; S.floatImg = await fitImage(raw, S.floatW, Math.round(S.floatW*1.27),'center'); S.floatShow = true; $('#f-floatShow').checked = true; }
+  else if(target==='qr'){ S.qrImg = raw; S.qrMode='img'; $('#f-qrMode').value='img'; }
+  save(); render(); pv('#pv-avatar',S.avatar); pv('#pv-shot',S.shot); pv('#pv-float',S.floatImg);
+}
+$$('.thumb').forEach(el=>{
+  const target = el.dataset.target;
+  el.addEventListener('click', ()=>{ lastTarget = target; $('#filepick').click(); });
+  el.addEventListener('dragover', e=>{ e.preventDefault(); el.classList.add('hover'); });
+  el.addEventListener('dragleave', ()=>el.classList.remove('hover'));
+  el.addEventListener('drop', async e=>{
+    e.preventDefault(); el.classList.remove('hover');
+    const f = e.dataTransfer.files[0]; if(f) applyImage(await readFile(f), target);
+  });
+});
+$('#up-qr').addEventListener('click', ()=>{ lastTarget='qr'; $('#filepick').click(); });
+$('#filepick').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  await applyImage(await readFile(f), lastTarget);
+  e.target.value = '';
+});
+document.addEventListener('paste', async e=>{
+  const items = (e.clipboardData||{}).items || [];
+  for(const it of items){
+    if(it.type && it.type.indexOf('image')===0){
+      e.preventDefault();
+      await applyImage(await readFile(it.getAsFile()), lastTarget);
+      toast('图片已替换到「'+({avatar:'头像',shot:'手机截图',float:'悬浮小图',qr:'二维码'}[lastTarget])+'」');
+      return;
+    }
+  }
+});
+
+/* -------- 缩放 -------- */
+function applyZoom(){
+  const z = (+$('#f-zoom').value)/100;
+  const sc = $('#scaler');
+  sc.style.transform = 'scale('+z+')';
+  sc.style.height = ($('#poster').offsetHeight*z)+'px';
+  sc.style.width  = (540*z)+'px';
+}
+
+/* -------- 导出 -------- */
+function stamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0'); return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate()); }
+async function toCanvas(){
+  const src = $('#poster');
+  const clone = src.cloneNode(true);
+  clone.style.transform='none';
+  const holder = document.createElement('div');
+  holder.style.cssText='position:fixed;left:-99999px;top:0;';
+  holder.appendChild(clone); document.body.appendChild(holder);
+  await Promise.all([...clone.querySelectorAll('img')].map(im=> im.complete ? 1 : new Promise(r=>{ im.onload=r; im.onerror=r; })));
+  await new Promise(r=>setTimeout(r,60));
+  const scale = S.exportScale||2;
+  const canvas = await html2canvas(clone, { scale, backgroundColor:'#ffffff', useCORS:true, logging:false,
+    width:540, height:clone.offsetHeight, windowWidth:540, windowHeight:clone.offsetHeight+200 });
+  holder.remove();
+  return canvas;
+}
+async function download(){
+  toast('正在生成图片…');
+  const c = await toCanvas();
+  c.toBlob(b=>{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'TopPostSharing_'+stamp()+'.png';
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    toast('已导出 '+c.width+'×'+c.height+' PNG');
+  },'image/png');
+}
+$('#btn-png2').addEventListener('click', ()=>{ S.exportScale=2; $('#f-scale').value=2; $('#f-scaleV').textContent='2'; download(); });
+$('#btn-png3').addEventListener('click', ()=>{ S.exportScale=3; $('#f-scale').value=3; $('#f-scaleV').textContent='3'; download(); });
+$('#btn-copy').addEventListener('click', async ()=>{
+  try{
+    const c = await toCanvas();
+    const blob = await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([ new ClipboardItem({'image/png':blob}) ]);
+    toast('图片已复制，可直接粘贴到微信/文档');
+  }catch(e){ toast('当前环境不支持复制，请用「下载 PNG」'); }
+});
+$('#btn-exp').addEventListener('click', ()=>{
+  const b = new Blob([JSON.stringify(S,null,1)], {type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download = '海报配置_'+stamp()+'.json'; a.click(); toast('配置已导出（含图片，下周导入即用）');
+});
+$('#btn-imp').addEventListener('click', ()=>{
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+  inp.onchange = ()=>{ const f=inp.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload = ()=>{ try{
+        const o = JSON.parse(fr.result);
+        S = Object.assign(fresh(), o);
+        save(); syncPanel(); render(); applyZoom(); toast('配置已载入');
+      }catch(e){ toast('配置文件读取失败'); } };
+    fr.readAsText(f); };
+  inp.click();
+});
+$('#btn-reset').addEventListener('click', ()=>{
+  if(!confirm('恢复为示例内容？当前编辑会被覆盖（可先“导出配置”备份）。')) return;
+  S = fresh(); save(); syncPanel(); render(); applyZoom(); toast('已恢复示例');
+});
+let tid;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(tid); tid = setTimeout(()=>t.classList.remove('on'), 2200);
+}
+
+/* ================= 启动 ================= */
+S = load();
+$$('#f-m0k,#f-m1k,#f-m2k').forEach(fillSelect);
+syncPanel();
+render();
+applyZoom();
+window.addEventListener('resize', applyZoom);
+document.fonts && document.fonts.ready && document.fonts.ready.then(()=>{ render(); applyZoom(); });
+</script>
+</body>
+</html>

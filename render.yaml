@@ -1,0 +1,25 @@
+# Render 声明式部署（render.com）
+#
+# 1. 把整个项目（不含输出/、分享版/、__pycache__/）推到 GitHub
+# 2. 去 https://dashboard.render.com/connect 关联 GitHub 账号
+# 3. 选「New +」→「Blueprint」，选你这个仓库
+# 4. Render 自动读这个文件创建 Web Service（约 2 分钟）
+# 5. 给你的永久域名：tps-poster.onrender.com（可改）
+#
+# 注意事项：
+# - 免费档 15 分钟无访问会休眠，首次访问约 30 秒唤醒
+# - 每月 750 小时 CPU 额度（24/7 跑的话够用）
+# - 出站 IP 不会被拦（已验证 2024-2026 期间可以访问 xiaohongshu.com）
+
+services:
+  - type: web
+    name: tps-poster
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: TPS_HOST
+        value: 0.0.0.0
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # 不需要 PYTHONUNBUFFERED 之外的环境变量

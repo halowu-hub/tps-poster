@@ -1,0 +1,35 @@
+# Top Post Sharing · 反向代理与 HTTPS 模板
+#
+# 适用：nginx / Caddy / Traefik 等。这里给 nginx 模板。
+# 部署到云端（VPS / 容器平台）时强烈建议套一层 HTTPS，
+# 否则小红书 CDN 可能对裸 HTTP 抓取做更严的风控。
+
+server {
+    listen 80;
+    server_name tps.example.com;        # 改成你的真实域名（example.com 是 IANA 保留的占位域名）
+
+    # HTTP -> HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name tps.example.com;        # 改成你的真实域名（example.com 是 IANA 保留的占位域名）
+
+    # 证书路径（Let's Encrypt 申请后填进去，或用 certbot 自动管理）
+    ssl_certificate     /etc/letsencrypt/live/tps.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tps.example.com/privkey.pem;
+
+    # 反代到容器里的 8731
+    location / {
+        proxy_pass         http://127.0.0.1:8731;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        # 抓取可能要十几秒
+        proxy_read_timeout 60s;
+        client_max_body_size 5m;
+    }
+}
